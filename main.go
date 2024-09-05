@@ -25,17 +25,17 @@ type Point struct {
     y int
 }
 
-const C_CURSOR   = 82
-const C_MINE     = 198
-const C_HIDDEN   = 45
-const C_FLAGGED  = 207
+const C_CURSOR   = 154
+const C_MINE     = 196
+const C_HIDDEN   = 250
+const C_FLAGGED  = 226
 
 const C_MINES_LOW  = 43
 const C_MINES_MID  = 214
 const C_MINES_HIGH = 196
 
-const CH_CUR_A   = '['
-const CH_CUR_B   = ']'
+const CH_CUR_A   = '('
+const CH_CUR_B   = ')'
 const CH_MINE    = '*'
 const CH_HIDDEN  = '.'
 const CH_FLAGGED = 'x'
@@ -194,7 +194,17 @@ func (g *Game) Draw() {
     fmt.Printf("%s%s", curUp(g.height), colourFg(7))
 }
 
+func (g *Game) Move(x int, y int) {
+    nx := g.curX + x
+    ny := g.curY + y
+    if nx < 0 || nx >= g.width || ny < 0 || ny >= g.height {
+        return
+    }
 
+    g.curX = nx
+    g.curY = ny
+    g.moves++
+}
 
 
 func clearscreen() string {
@@ -263,8 +273,7 @@ func main() {
         term.Restore(int(os.Stdin.Fd()), oldTermState)
     }()
 
-    fmt.Printf("%s\r\n", curHide())
-
+    fmt.Printf("%s%sWASD or arrows to move, F to place a flag, Space to clear\r\n\r\n", curHide(), colourFg(154))
     mine.Draw()
 
     for !mine.gameover {
@@ -275,29 +284,36 @@ func main() {
             break
         }
 
+        if b[0] == 27 {
+            _, err = os.Stdin.Read(b)
+            if err != nil || b[0] != '[' {
+                break
+            }
+            _, err = os.Stdin.Read(b)
+            if err != nil {
+                break
+            }
+        }
+
         switch uint8(b[0]) {
             case 'q':
                 return
-            case 'w':            
-                if mine.curY > 0 {
-                    mine.curY--
-                    mine.moves++
-                }
+            case 'A':
+                mine.Move(0, -1)
+            case 'B':
+                mine.Move(0, 1)
+            case 'C':
+                mine.Move(1, 0)
+            case 'D':
+                mine.Move(-1, 0)
+            case 'w':
+                mine.Move(0, -1)
             case 's':
-                if mine.curY < mine.height - 1 {
-                    mine.curY++
-                    mine.moves++
-                }
+                mine.Move(0, 1)
             case 'a':
-                if mine.curX > 0 {
-                    mine.curX--
-                    mine.moves++
-                }
+                mine.Move(-1, 0)
             case 'd':
-                if mine.curX < mine.width - 1 {
-                    mine.curX++
-                    mine.moves++
-                }
+                mine.Move(1, 0)
             case ' ':
                 idx := mine.curY * mine.width + mine.curX            
                 if mine.state[idx] == 'h' {
