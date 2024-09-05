@@ -16,7 +16,7 @@ type Game struct {
     curX     int
     curY     int
     moves    int
-    mines    int // mines left unflagged
+    mines    int
     gameover bool  
 }
 
@@ -49,7 +49,7 @@ func (g *Game) Init(width int, height int) {
 }
 
 func (g *Game) Reset(minesTotal int) {
-    for minesTotal > 1 {
+    for minesTotal > 0 {
         idx := rand.Int() % (g.width * g.height)
         for g.field[idx] {
             idx = rand.Int() % (g.width * g.height)
@@ -93,7 +93,7 @@ func (g *Game) FloodFill(x int, y int, temp []int) {
     if g.field[idx] || g.state[idx] == 'f' {        
         return 
     }
-    if temp[idx] != 0 || g.CheckNeighbours(x, y) > 3 {
+    if temp[idx] != 0 || g.CheckNeighbours(x, y) > 1 {
         return
     }
     temp[idx] = 1
@@ -128,6 +128,26 @@ func (g *Game) GetReveals(x int, y int) []*Point {
         }
     }
     return points
+}
+
+func (g *Game) Kaboom() {
+    fmt.Printf("%s%sKABOOM!\r\n", curUp(1), colourFg(196))
+    g.gameover = true
+    for i := range g.state {
+        if g.state[i] != 'f' || g.field[i] {
+            g.state[i] = 's'
+        }                        
+    }
+}
+
+func (g *Game) Winner() {
+    fmt.Printf("%s%sYOU WON!\r\n", curUp(1), colourFg(226))
+    g.gameover = true
+    for i := range g.state {
+        if g.state[i] != 'f' || g.field[i] {
+            g.state[i] = 's'
+        }                        
+    }
 }
 
 func (g *Game) Draw() {
@@ -283,9 +303,8 @@ func main() {
                 if mine.state[idx] == 'h' {
                     mine.moves++
                     if mine.field[idx] {
-                        fmt.Printf("%s%sKABOOM!\r\n", curUp(1), colourFg(196))
+                        mine.Kaboom()
                         mine.state[idx] = 's'
-                        mine.gameover = true
                     } else {
                         reveals := mine.GetReveals(mine.curX, mine.curY)
                         for _, p := range reveals {
@@ -300,12 +319,29 @@ func main() {
                 mine.moves++
                 if mine.state[idx] == 'f' {
                     mine.state[idx] = 'h'
-                    mine.mines++
                 } else if mine.state[idx] == 'h' {
                     mine.state[idx] = 'f'
-                    mine.mines--
                 }
         } 
+
+        hidden := 0
+        for i := range mine.state {
+            if mine.state[i] == 'h' {
+                hidden++
+            }
+        }
+        if hidden == 0 {
+            for i := range mine.state {
+                if mine.state[i] == 'f' && !mine.field[i] {
+                    mine.state[i] = 's'
+                    mine.Kaboom()
+                    break
+                }
+            }
+            if !mine.gameover {
+                mine.Winner()
+            }
+        }
 
         mine.Draw()
     }
