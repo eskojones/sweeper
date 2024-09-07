@@ -16,6 +16,7 @@ type Game struct {
     curX     int
     curY     int
     moves    int
+    hidden   int
     mines    int
     gameover bool  
 }
@@ -61,6 +62,7 @@ func (g *Game) Reset(minesTotal int) {
     for i := range g.field {
         g.state[i] = 'h'
     }
+    g.hidden = g.width * g.height
 }
 
 func (g *Game) CheckCursor() bool {
@@ -147,6 +149,40 @@ func (g *Game) Winner() {
         if g.state[i] != 'f' || g.field[i] {
             g.state[i] = 's'
         }                        
+    }
+}
+
+func (g *Game) Reveal(x int, y int) {
+    idx := y * g.width + x            
+    if g.state[idx] != 'h' {
+        return
+    }
+    
+    g.moves++
+    if g.field[idx] {
+        g.Kaboom()
+        g.state[idx] = 's'
+    } else {
+        reveals := g.GetReveals(x, y)
+        for _, p := range reveals {
+            if g.state[p.y * g.width + p.x] != 'h' {
+                continue
+            }
+            g.hidden--
+            g.state[p.y * g.width + p.x] = 's'
+        }
+    }
+}
+
+func (g *Game) Flag(x int, y int) {
+    idx := y * g.width + x
+    g.moves++
+    if g.state[idx] == 'f' {
+        g.state[idx] = 'h'
+        g.hidden++
+    } else if g.state[idx] == 'h' {
+        g.state[idx] = 'f'
+        g.hidden--
     }
 }
 
@@ -315,38 +351,12 @@ func main() {
             case 'd':
                 mine.Move(1, 0)
             case ' ':
-                idx := mine.curY * mine.width + mine.curX            
-                if mine.state[idx] == 'h' {
-                    mine.moves++
-                    if mine.field[idx] {
-                        mine.Kaboom()
-                        mine.state[idx] = 's'
-                    } else {
-                        reveals := mine.GetReveals(mine.curX, mine.curY)
-                        for _, p := range reveals {
-                            if mine.state[p.y * mine.width + p.x] == 'h' {
-                                mine.state[p.y * mine.width + p.x] = 's'
-                            }
-                        }
-                    }
-                }
+                mine.Reveal(mine.curX, mine.curY)
             case 'f':
-                idx := mine.curY * mine.width + mine.curX
-                mine.moves++
-                if mine.state[idx] == 'f' {
-                    mine.state[idx] = 'h'
-                } else if mine.state[idx] == 'h' {
-                    mine.state[idx] = 'f'
-                }
+                mine.Flag(mine.curX, mine.curY)
         } 
 
-        hidden := 0
-        for i := range mine.state {
-            if mine.state[i] == 'h' {
-                hidden++
-            }
-        }
-        if hidden == 0 {
+        if mine.hidden == 0 {
             for i := range mine.state {
                 if mine.state[i] == 'f' && !mine.field[i] {
                     mine.state[i] = 's'
